@@ -1,0 +1,203 @@
+---
+title: "Modelo "
+author: "Rodrigo Zepeda-Tello"
+date: "rodrigo.zepeda@imss.gob.mx"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse, quietly = T)
+library(cowplot)
+library(knitr)
+opts_chunk$set(echo = TRUE)
+opts_chunk$set(fig.width  = 8)
+opts_chunk$set(fig.height = 4)
+opts_chunk$set(fig.align='center')
+```
+
+## Descripción del problema
+
+### Objetivo
+
+> Se tiene una base con el tiempo de recuperación que las doctoras y los doctores han prescrito para sus pacientes. Se desea modelar la distribución del tiempo de recuperación controlando por sexo y edad de los pacientes. 
+
+### Consideraciones 
+
+El tiempo que prescriben las y los médicos para recuperación suele estar redondeado fuertemente a múltiplos de semana con los valores más típicos siendo de 1 a 3 días, luego 7, 14 y 21. Esto no necesariamente está asociado a una razón biológica sino a convenciones sociales (el calendario). Más aún, una proporción pequeña de los datos (estimado < 10%) contiene valores atípicos que pueden referir a errores de registro en la base, errores en el diagnóstico de la enfermedad o casos excepcionales donde por algún motivo la recuperación del paciente toma demasiado tiempo. 
+
+> El objetivo entonces es reconstruir la distribución original de tiempo considerando que los datos están fuertemente sesgados a múltiplos semanales y contienen un porcentaje de valores atípicos. 
+
+## Métodos
+
+La siguientes secciones exponen los métodos. En primer lugar se explica en formato de divulgación la metodología; luego se presenta una versión simplificada del método aplicado y finalmente se describe el método utilizado.  
+
+### Idea del método (divulgación)
+
+El modelo considera que todos los pacientes tienen un tiempo de recuperación que sigue una distribución continua. Un paciente puede recuperarse tanto en el día 14 como en el 1.3 ó el 6.5 significando el primero una recuperación en la mañana del primer día y el segundo que la persona se sintió bien a la mitad de su sexto día. Se supone que dichos días son redondeados para su prescripción de manera artificial a números enteros (para prescribir en días) y, en cierta proporción (no todos), a múltiplos de 7 (para prescribir en semanas). 
+
+La imagen siguiente presenta el tiempo de recuperación real (gráfica izquierda) así como el tiempo de recuperación una vez una proporción se redondea en múltiplos de 7 (gráfica derecha):
+
+```{r, echo = FALSE}
+#Simulation distribution
+#Gamma para que el modelo esté bien especificado;
+#weibull para que no esté bien especificado
+simdist <- "gamma" #weibull
+shape   <- 5
+scale   <- 3
+
+#No todos los datos están redondeados así que se establece un porcentaje
+#de cuántos tienen redondeo
+perc_redondeado <- 0.75  #Porcentaje de datos redondeados a 7
+perc_outliers   <- 0.05 #Se agrega el 1% de outliers
+nsims           <- 1000 #Número de simulaciones para el modelo
+
+#Generamos las simulaciones:
+if (simdist == "gamma"){
+  sample_dist <- function(){rgamma(nsims, shape = shape, scale = scale)}
+  dist_fun    <- function(x){dgamma(x, shape = shape, scale = scale)}
+} else if (simdist == "weibull"){
+  sample_dist <- function(x){rweibull(nsims, shape = shape, scale = scale)}
+  dist_fun    <- function(x){dweibull(x, shape = shape, scale = scale)}
+} else {
+  stop("Distribución inválida selecciona 'gamma' o 'weibull'.")
+}
+
+#Simulamos los verdaderos datos filtrados como días (enteros)
+datos_distribucion <- sample_dist()
+datos_distribucion <- round(datos_distribucion,0)
+
+#Redondeamos la mayoría de los datos a múltiplos de 7 a partir de 3
+redondeados <- datos_distribucion
+redondear   <- datos_distribucion[datos_distribucion > 3]
+a_redondear <- sample(ceiling(perc_redondeado*length(redondear)))
+redondear[a_redondear]                     <- round(redondear[a_redondear]/7)*7
+redondeados[redondeados > 3] <- redondear
+
+plot1 <- ggplot(data.frame(x = datos_distribucion)) +
+  geom_histogram(aes(x = x, y = ..density..), 
+                 fill = "#39A6A3", 
+                 breaks = seq(0,40, by = 1),
+                 color = "white") + 
+  theme_classic() +
+  labs(
+    x = "Tiempo de recuperación", 
+    y = "",
+    title = "Distribución real"
+  ) +
+  scale_y_continuous(labels = scales::percent)
+
+plot2 <- ggplot(data.frame(x = redondeados)) +
+  geom_histogram(aes(x = x, y = ..density..), 
+                 fill = "orange", 
+                 breaks = seq(0,40, by = 1),
+                 color = "white") + 
+  theme_classic() +
+  labs(
+    x = "Tiempo de recuperación", 
+    y = "",
+    title = "Distribución redondeada"
+  ) +
+  scale_y_continuous(labels = scales::percent)
+
+cowplot::plot_grid(plot1, plot2, ncol = 2)
+```
+
+El fenómeno que observamos es similar al de la gráfica derecha pero no completamente igual. En los datos observados (gráfica inferior) una proporción $\theta = 0.05$ de valores fueron cambiados para generar observaciones atípicas (por ejemplo en la base se registró un 100 en lugar de un 10). 
+
+El modelo funciona como sigue: para cada padecimiento, grupo de edad y sexo, se supone que una proporción (desconocida) de los datos corresponderá a atípicos. Para cada uno de los datos se analiza _qué es lo más probable_: que el valor sea atípico o que corresponda a los datos reales. Esto permite generar dos bases de datos distintas: las de los probablemente atípicos y la de los probablemente reales. Sobre la base de aquellos clasificados como probablemente reales se busca entonces la mejor distribución de probabilidad que, al momento de muestrear de ella y redondear los resultados, se obtengan observaciones similares a los datos observados. Este proceso se repite múltiples veces para garantizar que los resultados no se deban sólo al azar. 
+
+De manera resumida el proceso está dado por:
+
+  1. Clasificar algunos de los datos como atípicos.
+  
+  2. Ajustar un modelo de probabilidad a los datos restantes de tal forma que, al redondear de dicho modelo, se obtengan los resultados más parecidos posibles a lo observado.
+  
+  3. Repetir. 
+  
+La siguiente gráfica, resultante de simulaciones (ver más abajo), muestra bajo una base de datos sintética cómo se ve la verdadera distribución de los datos (*real*), cómo resultan los datos observados a partir de ella (*redondeado*) y cómo ajusta el modelo resultante de los pasos anteriores (*modelo*). Dicha base de datos sintética contiene además un 5\% valores atípicos en la derecha que el modelo, adecuadamente, decide no ajustar. 
+
+![Distribución redondeada con valores atípicos. Comparativo con modelo original y modelo estimado.](Atipicos.png)
+  
+  
+  
+### Ajuste simple
+
+> Ésta es una explicación más sencilla del ajuste que el modelo completo pues no considera edad ni sexo. 
+
+Para cada paciente $i$, sea $T^{R}_i$ el tiempo prescrito por el médico ya con redondeo. Dicho tiempo está en función del verdadero tiempo de recuperación (desconocido), $T_i$:
+$$
+T^{R}_i = T_i + \epsilon_i
+$$
+donde $\epsilon_i$ es el error de redondeo. Si $\epsilon_i = 0$ no hay redondeo en los datos y los observados corresponden a los teóricos. Una cierta proporción de los tiempos observados corresponden a valores atípicos, donde el tiempo observado $T_i^{obs}$ en realidad depende de otro valor, $\mathcal{O}_i$ y de su propio error de redondeo: $\zeta_i$. En el caso de que lo observado sea un valor atípico se tiene entonces la identidad: 
+$$
+T_i^{A} = \mathcal{O}_i + \zeta_i
+$$
+Para cada paciente se observa un valor en la base $T_i^{obs}$, el cual, con probabilidad $1 - \theta$ es un valor atípico:
+$$
+T_i^{obs} = \begin{cases}
+T_i^{R} & \textrm{ con probabilidad } \theta, \\
+T_i^{A} & \textrm{ con probabilidad } 1 - \theta. \\
+\end{cases}
+$$
+El ajuste se realiza de manera bayesiana donde se supone:
+\begin{equation}
+\begin{aligned}
+\theta & \sim \textrm{Beta}(0.25,1)
+T_i|\alpha_R,\beta_R          & \sim \textrm{Gamma}(\alpha_R, \beta_R), \\
+\mathcal{O}_i|\alpha_A,\beta_A & \sim \textrm{Gamma}(\alpha_A, \beta_A),
+\end{aligned}
+\end{equation}
+donde $\alpha_k, \beta_j \sim \textrm{HalfCauchy}(0, 2.5)$ para $k,j \in \{R,A\}$. 
+Se tienen además las siguientes identidades que relacionan los datos observados con el modelo teórico:
+\begin{equation}
+\begin{aligned}
+T_i & = T_i^{R} + \epsilon_i, \\
+\mathcal{O}_i & = T_i^{A} + \zeta_i. \\
+\end{aligned}
+\end{equation}
+donde $\epsilon_i\sim\textrm{Uniforme}(-3.5,3.5)$ es el error de redondeo semanal y $\zeta_i\sim\textrm{Uniforme}(0,1000)$ es el error correspondiente a un valor atípico. 
+
+El modelo puede ser ajustado en `Stan` de la siguiente forma:
+```
+data {
+  int<lower=0> N;
+  vector[N] Tobs;
+}
+
+parameters {
+  real<lower=0> alpha[2];
+  real<lower=0> beta[2];
+  real<lower=0, upper=1> theta;
+  vector<lower=-3.5, upper=3.5>[N] error1;
+  vector<lower=0, upper=1000>[N] error2;
+}
+
+transformed parameters {
+  vector[N] Treal;
+  vector[N] Outlier;
+  Treal   = Tobs + error1; 
+  Outlier = Tobs + error2; 
+}
+
+model {
+  alpha    ~ cauchy(0, 2.5);
+  beta     ~ cauchy(0, 2.5);
+  error1   ~ uniform(-3.5, 3.5);
+  error2   ~ uniform(0, 1000);
+  theta   ~ beta(0.25,1);
+  for (n in 1:N)
+  target += log_mix(theta,
+                    gamma_lpdf(Treal[n] | alpha[1], beta[1]),
+                    gamma_lpdf(Outlier[n] | alpha[2], beta[2]));
+}
+
+generated quantities {
+  real Tpred       = gamma_rng(alpha[1], beta[1]);
+  real Outlierpred = gamma_rng(alpha[2], beta[2]);
+}
+```
+
+### Ajuste controlando por edad, sexo y enfermedad.
+
+
+
