@@ -4,8 +4,8 @@ title: Modelo para **A**juste del **TI**empo de **P**rescripción de **I**ncapac
 author: "Rodrigo Zepeda-Tello"
 date: "`r paste0('Versión del ',format(Sys.time(), '%d/%m/%Y'))`"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
