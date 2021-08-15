@@ -7,3 +7,4 @@
 .DS_Store
 models/Modelo_Gamma_Outliers_threads
 models/Modelo_Gamma_Outliers_Edad_threads
+*.Rproj

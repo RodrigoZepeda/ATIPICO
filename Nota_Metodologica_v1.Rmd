@@ -210,6 +210,12 @@ El modelo puede ser ajustado en `Stan` de la siguiente forma:
 ```{stan, code=readLines('models/Modelo_Gamma_Outliers_Edad.stan'), eval=FALSE, output.var='stanislao2'}
 ```
 
+El ajuste con datos redondeados se ve de la siguiente manera. Cabe recordar que el modelo opera conociendo sólo los datos que provienen del redondeo y desconoce la distribución real. 
+
+![Ajuste de datos redondeados mediante modelo Gamma bayesiano controlando por sexo y edad. Comparativo con modelo original y modelo estimado usando sólo datos redondeados a múltiplos de 7.](images/Atipicos_edad_gamma.png)
+
+El código de `R` para generar datos que sigan esta distribución y validar el modelo puede encontrarse en el apéndice. 
+
 ## Apéndice
 
 ### Código de R para generar ajuste simple 
@@ -221,3 +227,5 @@ El siguiente código genera datos que se comportan de acuerdo al modelo y ajusta
 
 ### Código de R para generar ajuste por edad y sexo 
 
+```{r, code=xfun::read_utf8('Simulacion_Guias_Estimacion_por_Edad.R'),eval=FALSE}
+```

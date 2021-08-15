@@ -13,7 +13,8 @@ library(mixdist)
 set.seed(23476785)
 stan_seed <- 23749
 chains = 4; iter_warmup = 250; nsim = 500; pchains = 4; 
-threads_per_chain = 4; threads = 12; iter_variational = 50000
+threads_per_chain = 4; threads = 12; iter_variational = 50000;
+adapt_iter = 1000;
 method = "variational" #faster (less accurate option) = "variational"
 
 #Flags for my compiler faster
@@ -91,9 +92,9 @@ if (simdist == "gamma"){
     rweibull(nsims, shape = unlist(shape), scale =  unlist(scale))
   }
   dist_fun     <- function(x, edad, sexo){
-    params       <- weibullpar(genera_media(edad,sexo, 1, random = F)/scale, sqrt(varianza))
-    shape        <- params["shape"] %>% as.numeric() %>% round(.,2)
-    scale        <- params["scale"] %>% as.numeric() %>% round(.,2)
+    params       <- weibullpar(genera_media(edad,sexo, 1, random = F), sqrt(varianza))
+    shape        <- params["shape"] %>% round(.,2)
+    scale        <- params["scale"] %>% round(.,2)
     dweibull(x, shape = unlist(shape), scale = unlist(scale))
   }
 } else {
@@ -160,6 +161,7 @@ if (method == "HMC"){
                                              seed = stan_seed, 
                                              iter= iter_variational,
                                              init = initf2,
+                                             adapt_iter = adapt_iter,
                                              adapt_engaged = T,
                                              output_samples	= 1000,
                                              threads = threads,
