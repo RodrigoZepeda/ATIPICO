@@ -1,8 +1,11 @@
 ---
-title: "Modelo "
+title: Modelo para **A**juste del **TI**empo de **P**rescripción de **I**ncapacidades
+  **C**on **O**utliers (**ATIPICO**)
 author: "Rodrigo Zepeda-Tello"
-date: "rodrigo.zepeda@imss.gob.mx"
-output: html_document
+date: "`r paste0('Versión del ',format(Sys.time(), '%d/%m/%Y'))`"
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -20,21 +23,21 @@ opts_chunk$set(fig.align='center')
 
 ### Objetivo
 
-> Se tiene una base con el tiempo de recuperación que las doctoras y los doctores han prescrito para sus pacientes. Se desea modelar la distribución del tiempo de recuperación controlando por sexo y edad de los pacientes. 
+> Se tiene una base con el tiempo de incapacidad temporal en el trabajo que el equipo médico ha prescrito a los pacientes. Se desea modelar la distribución del tiempo de recuperación controlando por sexo y edad de los pacientes. 
 
 ### Consideraciones 
 
-El tiempo que prescriben las y los médicos para recuperación suele estar redondeado fuertemente a múltiplos de semana con los valores más típicos siendo de 1 a 3 días, luego 7, 14 y 21. Esto no necesariamente está asociado a una razón biológica sino a convenciones sociales (el calendario). Más aún, una proporción pequeña de los datos (estimado < 10%) contiene valores atípicos que pueden referir a errores de registro en la base, errores en el diagnóstico de la enfermedad o casos excepcionales donde por algún motivo la recuperación del paciente toma demasiado tiempo. 
+El tiempo que prescriben las y los médicos para incapacidad suele estar redondeado a múltiplos de semana con los valores típicos siendo de 1 a 3 días, luego 7, 14 y 21. Esto no necesariamente está asociado a una razón biológica sino a convenciones sociales (el calendario). Más aún, una proporción pequeña de los datos (estimado < 10%) contiene valores atípicos que pueden referir a errores de registro en la base, errores en el diagnóstico de la enfermedad o casos excepcionales donde por algún motivo la recuperación del paciente toma una cantidad distinta de tiempo. 
 
-> El objetivo entonces es reconstruir la distribución original de tiempo considerando que los datos están fuertemente sesgados a múltiplos semanales y contienen un porcentaje de valores atípicos. 
+> El objetivo entonces es reconstruir la distribución original de tiempo de convalecencia por una incapacidad considerando que los datos están fuertemente sesgados a múltiplos semanales y contienen un porcentaje de valores atípicos. 
 
 ## Métodos
 
-La siguientes secciones exponen los métodos. En primer lugar se explica en formato de divulgación la metodología; luego se presenta una versión simplificada del método aplicado y finalmente se describe el método utilizado.  
+La siguientes secciones exponen los métodos. En primer lugar se explica en formato de divulgación la metodología; luego se presenta una versión simplificada del método aplicado y finalmente se describe el método utilizado.
 
-### Idea del método (divulgación)
+### Idea del método
 
-El modelo considera que todos los pacientes tienen un tiempo de recuperación que sigue una distribución continua. Un paciente puede recuperarse tanto en el día 14 como en el 1.3 ó el 6.5 significando el primero una recuperación en la mañana del primer día y el segundo que la persona se sintió bien a la mitad de su sexto día. Se supone que dichos días son redondeados para su prescripción de manera artificial a números enteros (para prescribir en días) y, en cierta proporción (no todos), a múltiplos de 7 (para prescribir en semanas). 
+El modelo considera que todos los pacientes tienen un tiempo de incapacidad que sigue una distribución continua. Un paciente puede recuperarse tanto en el día 14 como en el 1.3 ó el 6.5 significando el primero una recuperación en la mañana del primer día y el segundo que la persona se sintió bien a la mitad de su sexto día. Se supone que dichos días son redondeados para su prescripción de manera artificial a números enteros (para prescribir en días) y, en cierta proporción (no todos), a múltiplos de 7 (para prescribir en semanas). 
 
 La imagen siguiente presenta el tiempo de recuperación real (gráfica izquierda) así como el tiempo de recuperación una vez una proporción se redondea en múltiplos de 7 (gráfica derecha):
 
@@ -108,13 +111,13 @@ plot2 <- ggplot(data.frame(x = redondeados)) +
 cowplot::plot_grid(plot1, plot2, ncol = 2)
 ```
 
-En los datos observados (gráfica derecha) se modificaron, además, al 5\% de los valores a fin de generar observaciones atípicas de ahí que la gráfica amarilla aparezca con un mayor sesgo a la derecha y valores cercanos a 100. 
+En los datos observados (gráfica derecha) se modificaron, además, al 5\% de los valores a fin de generar observaciones atípicas de ahí que la gráfica amarilla aparezca con un mayor sesgo a la derecha y valores cercanos a 100. Esto para reflejar de mejor mandera los datos reales.  
 
 El modelo funciona como sigue: para cada padecimiento, grupo de edad y sexo, se supone que una proporción (desconocida) de los datos corresponderá a atípicos. Para cada uno de los datos se analiza _qué es lo más probable_: que el valor sea atípico o que corresponda a los datos reales. Esto permite generar dos bases distintas: las de los probablemente atípicos y la de los probablemente reales. Sobre la base de aquellos clasificados como probablemente reales se busca entonces la mejor distribución de probabilidad que, al momento de muestrear de ella y redondear los resultados, se obtengan observaciones similares a los datos observados. Este proceso se repite múltiples veces para garantizar que los resultados no se deban sólo al azar. 
 
 De manera resumida el proceso está dado por:
 
-  1. Clasificar algunos de los datos como atípicos .
+  1. Clasificar (de manera aleatoria) algunos de los datos como atípicos.
   
   2. Ajustar un modelo de probabilidad a los datos restantes de tal forma que, al redondear de dicho modelo, se obtengan los resultados más parecidos posibles a lo observado.
   
@@ -124,7 +127,7 @@ La siguiente gráfica, resultante de simulaciones (ver más abajo), muestra bajo
 
 ![Distribución redondeada con valores atípicos. Comparativo con modelo original y modelo estimado.](images/Atipicosgamma.png)
   
-  
+El modelo que aquí se presenta es una adaptación del modelo de variables latentes para redondeo de Gelman _et al_ (CITAR).
   
 ### Ajuste simple
 
