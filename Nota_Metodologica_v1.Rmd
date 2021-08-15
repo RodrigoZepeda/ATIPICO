@@ -228,10 +228,10 @@ El código de `R` para generar datos que sigan esta distribución y validar el m
 
 El siguiente código genera datos que se comportan de acuerdo al modelo y ajusta una distribución. Si la distribución de los datos coincide con la distribución _a priori_ del modelo entonces el ajuste es perfecto. Si la distribución no coincide de manera completa (por ejemplo teniendo datos Weibull y un modelo Gamma) el ajuste de todas formas es muy bueno: 
 
-```{r, code=xfun::read_utf8('Simulacion_Guias_Estimacion.R'),eval=FALSE}
+```{r, code=xfun::read_utf8('simulaciones/Simulacion_Guias_Estimacion.R'),eval=FALSE}
 ```
 
 ### Código de R para generar ajuste por edad y sexo 
 
-```{r, code=xfun::read_utf8('Simulacion_Guias_Estimacion_por_Edad.R'),eval=FALSE}
+```{r, code=xfun::read_utf8('simulaciones/Simulacion_Guias_Estimacion_por_Edad.R'),eval=FALSE}
 ```

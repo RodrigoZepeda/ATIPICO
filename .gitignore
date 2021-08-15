@@ -8,3 +8,8 @@
 models/Modelo_Gamma_Outliers_threads
 models/Modelo_Gamma_Outliers_Edad_threads
 *.Rproj
+/datasets
+/fitted_plots
+/results
+/logs
+models/Modelo_Gamma_Outliers_Edad_sin_Sexo_threads
