@@ -1,20 +1,3 @@
-//Modelo de redondeo semanal
-// ------------------------------------------------------------------------
-// Modelo para ajuste de tiempos de recuperación. 
-// Treal = Tiempo de recuperación real (días)
-// Tobs  = Tiempo de recuperación observado con fuerte énfasis en redondeos
-// de caracter semanal (7, 14, 28, etc). 
-// theta = Probabilidad de redondeo (no todos los datos son redondeados)
-// El modelo está dado por:
-//        Treal ~ Gamma(alpha, beta)
-//        error ~ Uniforme(-0.5, 0.5)
-// Con probabilidad theta:
-//    Tobs = redondeo_7(Treal) = 7[Treal/7 + error]
-// con probabilidad 1 - theta:
-//    Tobs = Treal
-// Lo cual implica que:
-//    Treal = Tobs - 7*error
-
 data {
   int<lower=0> N;
   vector[N] Tobs;
@@ -40,7 +23,7 @@ model {
   beta     ~ cauchy(0, 2.5);
   error1   ~ uniform(-3.5, 3.5);
   error2   ~ uniform(0, 1000);
-  theta   ~ beta(0.25,1);
+  theta    ~ beta(0.25,1);
   for (n in 1:N)
   target += log_mix(theta,
                     gamma_lpdf(Treal[n] | alpha[1], beta[1]),

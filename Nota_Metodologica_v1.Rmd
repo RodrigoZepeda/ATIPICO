@@ -9,6 +9,7 @@ output: html_document
 library(tidyverse, quietly = T)
 library(cowplot)
 library(knitr)
+set.seed(3904)
 opts_chunk$set(echo = TRUE)
 opts_chunk$set(fig.width  = 8)
 opts_chunk$set(fig.height = 4)
@@ -70,8 +71,13 @@ datos_distribucion <- round(datos_distribucion,0)
 redondeados <- datos_distribucion
 redondear   <- datos_distribucion[datos_distribucion > 3]
 a_redondear <- sample(ceiling(perc_redondeado*length(redondear)))
-redondear[a_redondear]                     <- round(redondear[a_redondear]/7)*7
+redondear[a_redondear]       <- round(redondear[a_redondear]/7)*7
 redondeados[redondeados > 3] <- redondear
+
+#Agregamos outliers
+outliers_id <- sample(1:nsims, ceiling(perc_outliers*nsims))
+outliers    <- runif(length(outliers_id), 70, 100)
+redondeados[outliers_id] <- outliers
 
 plot1 <- ggplot(data.frame(x = datos_distribucion)) +
   geom_histogram(aes(x = x, y = ..density..), 
@@ -89,7 +95,7 @@ plot1 <- ggplot(data.frame(x = datos_distribucion)) +
 plot2 <- ggplot(data.frame(x = redondeados)) +
   geom_histogram(aes(x = x, y = ..density..), 
                  fill = "orange", 
-                 breaks = seq(0,40, by = 1),
+                 breaks = seq(0,100, by = 1),
                  color = "white") + 
   theme_classic() +
   labs(
@@ -102,13 +108,13 @@ plot2 <- ggplot(data.frame(x = redondeados)) +
 cowplot::plot_grid(plot1, plot2, ncol = 2)
 ```
 
-El fenómeno que observamos es similar al de la gráfica derecha pero no completamente igual. En los datos observados (gráfica inferior) una proporción $\theta = 0.05$ de valores fueron cambiados para generar observaciones atípicas (por ejemplo en la base se registró un 100 en lugar de un 10). 
+En los datos observados (gráfica derecha) se modificaron, además, al 5\% de los valores a fin de generar observaciones atípicas de ahí que la gráfica amarilla aparezca con un mayor sesgo a la derecha y valores cercanos a 100. 
 
-El modelo funciona como sigue: para cada padecimiento, grupo de edad y sexo, se supone que una proporción (desconocida) de los datos corresponderá a atípicos. Para cada uno de los datos se analiza _qué es lo más probable_: que el valor sea atípico o que corresponda a los datos reales. Esto permite generar dos bases de datos distintas: las de los probablemente atípicos y la de los probablemente reales. Sobre la base de aquellos clasificados como probablemente reales se busca entonces la mejor distribución de probabilidad que, al momento de muestrear de ella y redondear los resultados, se obtengan observaciones similares a los datos observados. Este proceso se repite múltiples veces para garantizar que los resultados no se deban sólo al azar. 
+El modelo funciona como sigue: para cada padecimiento, grupo de edad y sexo, se supone que una proporción (desconocida) de los datos corresponderá a atípicos. Para cada uno de los datos se analiza _qué es lo más probable_: que el valor sea atípico o que corresponda a los datos reales. Esto permite generar dos bases distintas: las de los probablemente atípicos y la de los probablemente reales. Sobre la base de aquellos clasificados como probablemente reales se busca entonces la mejor distribución de probabilidad que, al momento de muestrear de ella y redondear los resultados, se obtengan observaciones similares a los datos observados. Este proceso se repite múltiples veces para garantizar que los resultados no se deban sólo al azar. 
 
 De manera resumida el proceso está dado por:
 
-  1. Clasificar algunos de los datos como atípicos.
+  1. Clasificar algunos de los datos como atípicos .
   
   2. Ajustar un modelo de probabilidad a los datos restantes de tal forma que, al redondear de dicho modelo, se obtengan los resultados más parecidos posibles a lo observado.
   
@@ -116,7 +122,7 @@ De manera resumida el proceso está dado por:
   
 La siguiente gráfica, resultante de simulaciones (ver más abajo), muestra bajo una base de datos sintética cómo se ve la verdadera distribución de los datos (*real*), cómo resultan los datos observados a partir de ella (*redondeado*) y cómo ajusta el modelo resultante de los pasos anteriores (*modelo*). Dicha base de datos sintética contiene además un 5\% valores atípicos en la derecha que el modelo, adecuadamente, decide no ajustar. 
 
-![Distribución redondeada con valores atípicos. Comparativo con modelo original y modelo estimado.](Atipicos.png)
+![Distribución redondeada con valores atípicos. Comparativo con modelo original y modelo estimado.](images/Atipicosgamma.png)
   
   
   
@@ -128,10 +134,12 @@ Para cada paciente $i$, sea $T^{R}_i$ el tiempo prescrito por el médico ya con 
 $$
 T^{R}_i = T_i + \epsilon_i
 $$
-donde $\epsilon_i$ es el error de redondeo. Si $\epsilon_i = 0$ no hay redondeo en los datos y los observados corresponden a los teóricos. Una cierta proporción de los tiempos observados corresponden a valores atípicos, donde el tiempo observado $T_i^{obs}$ en realidad depende de otro valor, $\mathcal{O}_i$ y de su propio error de redondeo: $\zeta_i$. En el caso de que lo observado sea un valor atípico se tiene entonces la identidad: 
+donde $\epsilon_i$ es el error de redondeo. Si $\epsilon_i = 0$ no hay redondeo en los datos y los observados corresponden a los teóricos. Una cierta proporción de los tiempos observados son en realidad valores atípicos. A estos, los denotamos $T_i^{A}$ y suponemos que: 
 $$
 T_i^{A} = \mathcal{O}_i + \zeta_i
 $$
+donde $\mathcal{O}_i$ es la distribución de los atípicos y $\zeta_i$ su error asociado. 
+
 Para cada paciente se observa un valor en la base $T_i^{obs}$, el cual, con probabilidad $1 - \theta$ es un valor atípico:
 $$
 T_i^{obs} = \begin{cases}
@@ -142,7 +150,7 @@ $$
 El ajuste se realiza de manera bayesiana donde se supone:
 \begin{equation}
 \begin{aligned}
-\theta & \sim \textrm{Beta}(0.25,1)
+\theta & \sim \textrm{Beta}(0.25,1) \\
 T_i|\alpha_R,\beta_R          & \sim \textrm{Gamma}(\alpha_R, \beta_R), \\
 \mathcal{O}_i|\alpha_A,\beta_A & \sim \textrm{Gamma}(\alpha_A, \beta_A),
 \end{aligned}
@@ -158,46 +166,58 @@ T_i & = T_i^{R} + \epsilon_i, \\
 donde $\epsilon_i\sim\textrm{Uniforme}(-3.5,3.5)$ es el error de redondeo semanal y $\zeta_i\sim\textrm{Uniforme}(0,1000)$ es el error correspondiente a un valor atípico. 
 
 El modelo puede ser ajustado en `Stan` de la siguiente forma:
+```{stan, code=readLines('models/Modelo_Gamma_Outliers.stan'), eval=FALSE, output.var='stanislao'}
 ```
-data {
-  int<lower=0> N;
-  vector[N] Tobs;
-}
 
-parameters {
-  real<lower=0> alpha[2];
-  real<lower=0> beta[2];
-  real<lower=0, upper=1> theta;
-  vector<lower=-3.5, upper=3.5>[N] error1;
-  vector<lower=0, upper=1000>[N] error2;
-}
+La siguiente gráfica muestra que incluso si especificamos de manera incorrecta la distribución a priori de $T_i^{R}$ tomándola como Weibull en lugar de Gamma, el modelo de todas maneras ajusta correctamente si $n$ es relativamente grande: 
 
-transformed parameters {
-  vector[N] Treal;
-  vector[N] Outlier;
-  Treal   = Tobs + error1; 
-  Outlier = Tobs + error2; 
-}
+![Distribución redondeada con valores atípicos especificando de manera incorrecta la distribución a priori. Comparativo con modelo original y modelo estimado.](images/Atipicosweibull.png)
 
-model {
-  alpha    ~ cauchy(0, 2.5);
-  beta     ~ cauchy(0, 2.5);
-  error1   ~ uniform(-3.5, 3.5);
-  error2   ~ uniform(0, 1000);
-  theta   ~ beta(0.25,1);
-  for (n in 1:N)
-  target += log_mix(theta,
-                    gamma_lpdf(Treal[n] | alpha[1], beta[1]),
-                    gamma_lpdf(Outlier[n] | alpha[2], beta[2]));
-}
 
-generated quantities {
-  real Tpred       = gamma_rng(alpha[1], beta[1]);
-  real Outlierpred = gamma_rng(alpha[2], beta[2]);
-}
-```
+Código de `R` para generar datos que sigan esta distribución y validar el modelo puede encontrarse en el apéndice. 
 
 ### Ajuste controlando por edad, sexo y enfermedad.
 
+Para el ajuste por sexo y edad, para cada enfermedad se establece una regresión donde la media de tiempo de recuperación ($\mu_R$) es de la forma:
+$$
+\mu_R = \nu_R + \gamma_R\cdot\textrm{Edad}_i + \eta_R\cdot\textrm{Sexo}_i, 
+$$
+mientras que la media de la distribución de valores atípicos está dada por
+$$
+\mu_A = \nu_A + \gamma_A\cdot\textrm{Edad}_i + \eta_A\cdot\textrm{Sexo}_i.   
+$$
+En ambos casos se tiene la parametrización anterior:
+\begin{equation}
+\begin{aligned}
+T_i|\alpha_R,\beta_R          & \sim \textrm{Gamma}(\alpha_R, \beta_R), \\
+\mathcal{O}_i|\alpha_A,\beta_A & \sim \textrm{Gamma}(\alpha_A, \beta_A),
+\end{aligned}
+\end{equation}
+donde
+$$
+\alpha_j = \mu_j/\beta_j
+$$
+para $j \in\{A,R\}$. Las distribuciones _a priori_ de los nuevos parámetros son: 
+\begin{equation}
+\begin{aligned}
+\nu_j, \beta_j & \sim \textrm{HalfCauchy}(0, 2.5),\\
+\gamma_j, \eta_j & \sim \textrm{Normal}(0,10000).
+\end{aligned}
+\end{equation}
+para $k,j \in \{R,A\}$.
 
+El modelo puede ser ajustado en `Stan` de la siguiente forma:
+```{stan, code=readLines('models/Modelo_Gamma_Outliers_Edad.stan'), eval=FALSE, output.var='stanislao2'}
+```
+
+## Apéndice
+
+### Código de R para generar ajuste simple 
+
+El siguiente código genera datos que se comportan de acuerdo al modelo y ajusta una distribución. Si la distribución de los datos coincide con la distribución _a priori_ del modelo entonces el ajuste es perfecto. Si la distribución no coincide de manera completa (por ejemplo teniendo datos Weibull y un modelo Gamma) el ajuste de todas formas es muy bueno: 
+
+```{r, code=xfun::read_utf8('Simulacion_Guias_Estimacion.R'),eval=FALSE}
+```
+
+### Código de R para generar ajuste por edad y sexo 
 
