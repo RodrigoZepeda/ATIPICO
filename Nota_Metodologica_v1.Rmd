@@ -4,8 +4,8 @@ title: Modelo para **A**juste del **TI**empo de **P**rescripción de **I**ncapac
 author: "Rodrigo Zepeda-Tello"
 date: "`r paste0('Versión del ',format(Sys.time(), '%d/%m/%Y'))`"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -170,6 +170,11 @@ T_i & = T_i^{R} + \epsilon_i, \\
 \end{aligned}
 \end{equation}
 donde $\epsilon_i\sim\textrm{Uniforme}(-3.5,3.5)$ es el error de redondeo semanal y $\zeta_i\sim\textrm{Uniforme}(0,1000)$ es el error correspondiente a un valor atípico. 
+
+En este caso, la función de log-verosimilitud está dada entonces por:
+$$
+\ell (\theta, \alpha_R, \alpha_A, \beta_R, \beta_A | T^{obs}) = \sum_{i = 1}^n \ln\Bigg(\theta \cdot \textrm{Gamma}(T_i|\alpha_R, \beta_R) + (1 - \theta)\cdot  \textrm{Gamma}(\mathcal{O}_i|\alpha_A, \beta_A) \Bigg)
+$$
 
 El modelo puede ser ajustado en `Stan` de la siguiente forma:
 ```{stan, code=readLines('models/Modelo_Gamma_Outliers.stan'), eval=FALSE, output.var='stanislao'}

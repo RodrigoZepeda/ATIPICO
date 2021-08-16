@@ -5,13 +5,14 @@ library(cmdstanr)
 library(posterior)
 library(scales)
 library(viridis)
+library(foreach)
 
 source("functions/read_file.R")
 source("functions/modelo_edad_sexo.R")
 
 set.seed(7345789)
 stan_seed <- sample(1:10000000, 1)
-options(mc.cores = parallel::detectCores())
+
 
 #Este es el camino al compilador puedes NO ponerlo
 #y correr compilar_modelo() y en automático detecta.
@@ -42,8 +43,17 @@ edades_interpol <- seq(20, 60, by = 5)
 convergen <- c()
 
 #Loopeamos por cada código
-for (file_name in fnames){
+n <- length(fnames)
+
+cores <- max(parallel::detectCores() - 2,1)
+cl    <- parallel::makeCluster(cores/2)
+doParallel::registerDoParallel(cl)
+options(mc.cores = 2)
+
+foreach (i = 1:n, .combine='c', 
+         .packages=c("cmdstanr","scales","viridis","tidyverse","posterior")) %dopar% {
   
+  file_name <- fnames[i]
   message(file_name)
   
   #Lectura de la base de datos
@@ -81,6 +91,8 @@ for (file_name in fnames){
       grafica_resultados(result, data_cie10$icd_code, row_diag$Diagnóstico)
     })
   }
+  convergen
 }
 
+parallel::stopCluster(cl)
 

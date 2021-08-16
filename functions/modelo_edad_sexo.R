@@ -58,7 +58,7 @@ ajusta_modelo <- function(modelo, init,
                             output_samples = 1000,
                             adapt_engaged = T,
                             adapt_iter = NULL,
-                            threads = max(parallel::detectCores() - 1,1),
+                            threads = 2,
                             iter_variational = 100000,
                             sig_figs = 4
                           )){
@@ -152,7 +152,7 @@ resume_resultados <- function(result,
   edades <- unique(result$results$Edad)
   sexos  <- unique(result$results$Sexo)
   resumen$`Carga de trabajo` <- rep(rep(qnames, length(sexos)), length(edades))
-  resumen <- resumen %>% arrange(`Carga de trabajo`, Edad, Sexo)
+  resumen <- resumen %>% arrange(Sexo, `Carga de trabajo`, Edad)
   write_excel_csv(resumen, fname_results)
   
   #Obtenemos el log:
