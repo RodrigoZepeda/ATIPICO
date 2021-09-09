@@ -5,6 +5,7 @@ author: "Rodrigo Zepeda-Tello"
 date: "`r paste0('Versión del ',format(Sys.time(), '%d/%m/%Y'))`"
 output:
   html_document: default
+  word_document: default
   pdf_document: default
 ---
 
@@ -191,11 +192,11 @@ Código de `R` para generar datos que sigan esta distribución y validar el mode
 
 Para el ajuste por sexo y edad, para cada enfermedad se establece una regresión donde la media de tiempo de recuperación ($\mu_R$) es de la forma:
 $$
-\mu_R = \nu_R + \gamma_R\cdot\textrm{Edad}_i + \eta_R\cdot\textrm{Sexo}_i, 
+\mu_R = \nu_R + \gamma_R\cdot\ln\Big(\textrm{Edad}_i\Big) + \eta_R\cdot\textrm{Sexo}_i, 
 $$
 mientras que la media de la distribución de valores atípicos está dada por
 $$
-\mu_A = \nu_A + \gamma_A\cdot\textrm{Edad}_i + \eta_A\cdot\textrm{Sexo}_i.   
+\mu_A = \nu_A + \gamma_A\cdot\ln\Big(\textrm{Edad}_i\Big) + \eta_A\cdot\textrm{Sexo}_i.   
 $$
 En ambos casos se tiene la parametrización anterior:
 \begin{equation}
@@ -215,10 +216,14 @@ para $j \in\{A,R\}$. Las distribuciones _a priori_ de los nuevos parámetros son
 \gamma_j, \eta_j & \sim \textrm{Normal}(0,10000).
 \end{aligned}
 \end{equation}
-para $k,j \in \{R,A\}$.
+para $k,j \in \{R,A\}$. 
+En este modelo el parámetro $\gamma_A$ representa la tendencia de la (log) edad. Si 
+$\gamma_A > 0$ los días de incapacidad aumentan con la edad, si $\gamma_A < 0$ los días disminuyen con ella y si $\gamma_A = 0$ la edad no es un factor que influya en los días. 
+
+Para propósitos de reporte se tomó la distribución _a posteriori_ de los $T_i$ y se reportó el redondeo al primer entero del primer cuartil de dicha distribución ($q_{0.25}$) para las cargas de trabajo leves, el segundo ($q_{0.50}$) para moderadas y el tercero ($q_{0.75}$) para pesadas. Es importante recalcar que para el cálculo de estos cuartiles no se contó con información relativa a la carga de trabajo _real_ y son sólo aproximaciones. 
 
 El modelo puede ser ajustado en `Stan` de la siguiente forma:
-```{stan, code=readLines('models/Modelo_Gamma_Outliers_Edad.stan'), eval=FALSE, output.var='stanislao2'}
+```{stan, code=readLines('models/Modelo_Gamma_Log_Lineal.stan'), eval=FALSE, output.var='stanislao2'}
 ```
 
 El ajuste con datos redondeados se ve de la siguiente manera. Cabe recordar que el modelo opera conociendo sólo los datos que provienen del redondeo y desconoce la distribución real. 

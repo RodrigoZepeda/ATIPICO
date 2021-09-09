@@ -29,7 +29,10 @@ read_file <- function(file_name,
                              ))
     data_cie10 <- data_cie10 %>% 
       mutate(Sexo = if_else(sexo == "Hombre", 0, 1)) %>%
-      select(EDAD, Sexo, sexo, dias_acum)
+      select(EDAD, Sexo, sexo, dias_acum) %>%
+      filter(EDAD > 10 & EDAD < 200) %>%
+      filter(!is.na(Sexo) & !is.na(EDAD) & !is.na(dias_acum) & sexo != "") %>%
+      filter(dias_acum >= 0)
   } 
   return(list(data_cie10 = data_cie10, icd_code = icd_code))
 }

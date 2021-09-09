@@ -13,3 +13,13 @@ models/Modelo_Gamma_Outliers_Edad_threads
 /results
 /logs
 models/Modelo_Gamma_Outliers_Edad_sin_Sexo_threads
+log.out
+/pdf
+Formato_v1.pdf
+Formato_pag1.pdf
+Formato_pag2.pdf
+log_pdf.out
+/guias_excel
+/ppt
+*.aux
+log_pdf.out

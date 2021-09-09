@@ -51,10 +51,10 @@ sexo   <- sample(c(0,1), nsims, replace = T, prob = c(psexo, 1-psexo))
 #Generamos los parámetros
 genera_media <- function(edad, sexo, sims = nsims, random = T){
   if (random){
-    mu <- media_baseline + rnorm(sims, gamma_edad, 0.1)*edad + rnorm(sims, beta_sexo, 0.1)*sexo
+    mu <- media_baseline + rnorm(sims, gamma_edad, 0.1)*log(edad) + rnorm(sims, beta_sexo, 0.1)*sexo
     mu[mu < 0] <- media_baseline
   } else {
-    mu <- media_baseline + gamma_edad*edad + beta_sexo*sexo
+    mu <- media_baseline + gamma_edad*log(edad) + beta_sexo*sexo
     mu[mu < 0] <- media_baseline
   }
   return(mu)

@@ -1,6 +1,10 @@
 data {
   int<lower=0> N;
   vector[N] Tobs;
+  
+  //Edades a interpolar en el resultado para reporte
+  int<lower=0> M; 
+  vector[M] EdadesResultado; 
 }
 
 parameters {
@@ -23,7 +27,7 @@ model {
   beta     ~ cauchy(0, 2.5);
   error1   ~ uniform(-3.5, 3.5);
   error2   ~ uniform(0, 1000);
-  theta    ~ beta(0.25,1);
+  theta    ~ beta(1.85,0.05);
   for (n in 1:N)
   target += log_mix(theta,
                     gamma_lpdf(Treal[n] | alpha[1], beta[1]),
@@ -31,6 +35,11 @@ model {
 }
 
 generated quantities {
-  real Tpred       = gamma_rng(alpha[1], beta[1]);
-  real Outlierpred = gamma_rng(alpha[2], beta[2]);
+  vector[M] Tpred_0;
+  vector[M] Tpred_1;
+  
+  for (m in 1:M){
+    Tpred_0[m]     = gamma_rng(alpha[1], beta[1]);
+    Tpred_1[m]     = gamma_rng(alpha[1], beta[1]);
+  }
 }
