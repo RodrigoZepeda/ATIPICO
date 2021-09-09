@@ -23,3 +23,9 @@ log_pdf.out
 /ppt
 *.aux
 log_pdf.out
+models/Modelo_sin_outliers_Log_edad_sin_sexo_threads
+models/Modelo_Gamma_sin_Outliers_Log_Edad_threads
+models/Modelo_Gamma_threads
+models/Modelo_Gamma_Outliers_Log_Edad_sin_Sexo_threads
+models/Modelo_Gamma_Log_Edad_GP_threads
+models/Modelo_sin_edad_threads
